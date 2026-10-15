@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config REPRO_REBOOT_ON_BOOT
+	bool "Reboot right after starting"
+	select REBOOT
+	help
+	  Makes the image reboot 300 ms after it starts, like an image that crashes on boot. It
+	  never gets to confirm itself, so MCUboot reverts it after its test boot.
+
+source "Kconfig.zephyr"
