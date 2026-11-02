@@ -25,7 +25,7 @@ sample, without the parts the repros don't need.
 
 ## Images
 
-`prebuilt/` has the images, built by `build.sh` with nRF Connect SDK v3.3.0. They're signed with
+`prebuilt/` has the images, built by `build.sh` with nRF Connect SDK v3.4.1. They're signed with
 MCUboot's development key (`root-ed25519.pem`), so upload `repro-2.0.0-reboots.bin` only to a DK
 flashed with `repro-1.0.0.hex`.
 
@@ -73,8 +73,9 @@ Affects `ConfirmAfterReset` in `mcumgr-core`.
 
 What happens:
 
-- MCUboot swaps in 2.0.0 for its test boot ("Swap type: test"). 2.0.0 reboots before anything can
-  confirm it, so MCUboot swaps 1.0.0 back ("Swap type: revert").
+- MCUboot swaps in 2.0.0 for its test boot ("Swap type: test"). 2.0.0 logs "Simulating a crash on
+  boot, rebooting" and reboots before anything can confirm it, so MCUboot swaps 1.0.0 back ("Swap
+  type: revert").
 - The app reconnects and confirms 2.0.0 by its hash, although 2.0.0 isn't running. Zephyr allows
   confirming an image that isn't active (`CONFIG_MCUMGR_GRP_IMG_ALLOW_CONFIRM_NON_ACTIVE_SLOT` is
   `y` by default in the swap modes) and marks it pending and permanent. The app reports that the
@@ -87,14 +88,14 @@ Expected: the upgrade fails because the new image isn't running, and nothing is 
 
 ## Building
 
-In an nRF Connect SDK v3.3.0 environment:
+In an nRF Connect SDK v3.4.1 environment:
 
 ```sh
 ./build.sh
 ```
 
-It builds the three images into `build/` and copies them to `prebuilt/`. Each image is one
-`west build`:
+It builds the three images into `build/` and copies them to `prebuilt/`, merging MCUboot and the
+signed application into one `.hex` file each. Each image is one `west build`:
 
 ```sh
 west build -b nrf54l15dk/nrf54l15/cpuapp -d build/v1 .

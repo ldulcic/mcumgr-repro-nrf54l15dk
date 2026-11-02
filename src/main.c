@@ -8,6 +8,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
@@ -72,6 +73,8 @@ int main(void)
 	if (IS_ENABLED(CONFIG_REPRO_REBOOT_ON_BOOT)) {
 		/* Like an image that crashes on boot, before anything can confirm it. */
 		LOG_ERR("Simulating a crash on boot, rebooting");
+		/* The log is deferred and would not be printed before the reboot, so flush it now. */
+		LOG_PANIC();
 		k_sleep(K_MSEC(300));
 		sys_reboot(SYS_REBOOT_COLD);
 	}
