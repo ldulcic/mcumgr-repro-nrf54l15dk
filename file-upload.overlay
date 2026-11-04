@@ -1,0 +1,39 @@
+/*
+ * LittleFS at /lfs1 on the DK's 8 MB external flash, for the file uploads of file-upload.conf.
+ * The internal RRAM has no room for test files.
+ */
+
+/ {
+	fstab {
+		compatible = "zephyr,fstab";
+
+		lfs1: lfs1 {
+			compatible = "zephyr,fstab,littlefs";
+			mount-point = "/lfs1";
+			partition = <&lfs1_partition>;
+			automount;
+			read-size = <16>;
+			prog-size = <16>;
+			cache-size = <64>;
+			lookahead-size = <32>;
+			block-cycles = <512>;
+		};
+	};
+};
+
+&mx25r64 {
+	status = "okay";
+	/* Faster writes and erases. */
+	mxicy,mx25r-power-mode = "high-performance";
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		lfs1_partition: partition@0 {
+			label = "lfs1";
+			reg = <0x0 0x800000>;
+		};
+	};
+};

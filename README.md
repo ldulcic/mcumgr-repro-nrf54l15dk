@@ -1,6 +1,6 @@
 # MCUmgr repro firmware for the nRF54L15 DK
 
-A minimal Zephyr application that reproduces two issues of
+A minimal Zephyr application that reproduces three issues of
 [nRF Connect Device Manager for Android](https://github.com/nordicsemi/Android-nRF-Connect-Device-Manager)
 on an nRF54L15 DK:
 
@@ -8,9 +8,12 @@ on an nRF54L15 DK:
    (`mcumgr-ble2`).
 2. [Test and Confirm confirms an image that failed its test boot](#2-test-and-confirm-confirms-an-image-that-failed-its-test-boot)
    (`mcumgr-core`).
+3. [File uploads fail with "Offset not valid"](#3-file-uploads-fail-with-offset-not-valid)
+   (`mcumgr-ble2`).
 
 The application is an MCUmgr (SMP) server over Bluetooth LE with the image and OS management
-groups, behind MCUboot in swap-using-move mode. It's based on Zephyr's
+groups, behind MCUboot in swap-using-move mode. The file upload image also has the file system
+management group, with LittleFS on the DK's external flash. It's based on Zephyr's
 [`smp_svr`](https://github.com/zephyrproject-rtos/zephyr/tree/main/samples/subsys/mgmt/mcumgr/smp_svr)
 sample, without the parts the repros don't need.
 
@@ -34,6 +37,7 @@ flashed with `repro-1.0.0.hex`.
 | `repro-1.0.0.hex` | MCUboot and version 1.0.0 of the application. Advertises as "SMP repro". |
 | `repro-2.0.0-reboots.bin` | Version 2.0.0, signed for upload. It reboots 300 ms after it starts, like an image that crashes on boot, so it never confirms itself. |
 | `repro-no-params.hex` | MCUboot and version 1.0.0 without the MCUmgr params command (`CONFIG_MCUMGR_GRP_OS_MCUMGR_PARAMS=n`, Zephyr's default). Advertises as "SMP repro no params". |
+| `repro-file-upload.hex` | MCUboot and version 1.0.0 with file uploads to `/lfs1` and 512-byte SMP buffers. Advertises as "SMP repro files". |
 
 To flash a `.hex` file (add `--serial-number` if more than one DK is connected):
 
@@ -86,6 +90,28 @@ What happens:
 
 Expected: the upgrade fails because the new image isn't running, and nothing is confirmed.
 
+## 3. File uploads fail with "Offset not valid"
+
+Affects `mcumgr-ble2`.
+
+1. Flash `repro-file-upload.hex`.
+2. In the sample app, connect to "SMP repro files". On the Files tab, tap Generate File, enter
+   1000000 and tap Upload.
+
+After a few seconds, the upload fails with "Offset not valid (11)":
+
+```
+Upload failed: Mcu Mgr Error: 11 (group: 8)
+```
+
+The uploader keeps 3 requests in flight, and `mcumgr-ble2` can send them in a different order than
+it got them. The device rejects a chunk at an unexpected offset with
+`FS_MGMT_ERR_FILE_OFFSET_NOT_VALID`. The image has 512-byte SMP buffers, so each request carries
+about 450 bytes of the file. With bigger buffers there are fewer requests, and an upload rarely
+hits the issue.
+
+Expected: the upload completes, as with `mcumgr-ble`, which sends requests in order.
+
 ## Building
 
 In an nRF Connect SDK v3.4.1 environment:
@@ -94,13 +120,14 @@ In an nRF Connect SDK v3.4.1 environment:
 ./build.sh
 ```
 
-It builds the three images into `build/` and copies them to `prebuilt/`, merging MCUboot and the
+It builds the four images into `build/` and copies them to `prebuilt/`, merging MCUboot and the
 signed application into one `.hex` file each. Each image is one `west build`:
 
 ```sh
 west build -b nrf54l15dk/nrf54l15/cpuapp -d build/v1 .
 west build -b nrf54l15dk/nrf54l15/cpuapp -d build/v2-reboots . -- -DEXTRA_CONF_FILE=v2-reboots.conf
 west build -b nrf54l15dk/nrf54l15/cpuapp -d build/no-params . -- -DEXTRA_CONF_FILE=no-params.conf
+west build -b nrf54l15dk/nrf54l15/cpuapp -d build/file-upload . -- -DEXTRA_CONF_FILE=file-upload.conf -DEXTRA_DTC_OVERLAY_FILE=file-upload.overlay
 ```
 
 ## License
